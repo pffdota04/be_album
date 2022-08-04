@@ -25,6 +25,6 @@ imageRoutes.route("/").get(getAnImage); // get file img
 imageRoutes.route("/info").get(getAnImageInfo); // get info's img
 imageRoutes.route("/albumid/:id").get(getImagesByAlbumId);
 imageRoutes.route("/getdzi").get(getDzi);
-imageRoutes.route("/getFolderDzi/:number/:name").get(getFolderDzi);
+imageRoutes.route("/getFolderDzi/:file/:number/:name").get(getFolderDzi);
 
 module.exports = imageRoutes;

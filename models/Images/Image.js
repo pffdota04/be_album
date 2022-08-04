@@ -5,6 +5,8 @@ const imageSchema = new mongoose.Schema({
   filename: String, //unique
   albumId: String,
   createBy: String,
+  width: Number,
+  height: Number,
   uploadDay: {
     type: Date,
     default: Date.now,

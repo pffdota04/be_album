@@ -12,21 +12,7 @@ const uploadAnImage = async (req, res) => {
   const random = Math.random().toString(36).slice(2);
   const filename = random + "-" + req.file.originalname;
   const tempPath = req.file.path;
-
-  const targetPath = path.join(__dirname, "./../../imgs/" + filename);
-  fs.rename(tempPath, targetPath, (err) => {
-    console.log(err);
-    if (err) return handleError(err, res);
-    const img = new Image({
-      name: req.body.name,
-      albumId: req.body.albumId,
-      createBy: req.body.createBy,
-      filename: filename,
-      sharedTo: JSON.parse(req.body.sharedTo),
-    });
-    img.save();
-    getDzi(req, res, filename);
-  });
+  getDzi(req, res, filename, tempPath);
 };
 
 // GET IMG CUSTOM SIZE
@@ -53,11 +39,18 @@ const getAnCustomImage = (req, res) => {
   if (widthStr) width = parseInt(widthStr);
   if (heightStr) height = parseInt(heightStr);
   res.type(`image/${format || "png"}`);
-  resize("imgs/" + req.query.file, format, width, height).pipe(res);
+  resize(
+    "./imgs/" + req.query.file.split(".")[0] + "/" + req.query.file,
+    format,
+    width,
+    height
+  ).pipe(res);
 };
 
 const getAnImage = (req, res) => {
-  res.sendFile(req.query.file, { root: "./imgs" });
+  res.sendFile(req.query.file, {
+    root: "./imgs/" + req.query.file.split(".")[0] + "/" + req.query.file,
+  });
 };
 
 const getAnImageInfo = async (req, res) => {
@@ -71,6 +64,9 @@ const getAnImageInfo = async (req, res) => {
       name: img.name,
       albumId: img.albumId,
       createBy: img.createBy,
+      filename: img.filename,
+      width: img.width,
+      height: img.height,
       countShare: img.sharedTo.length,
       uploadDay: img.uploadDay,
     });
@@ -89,35 +85,67 @@ const getImagesByAlbumId = async (req, res) => {
   res.send(imgs);
 };
 
-// create file.dzi and folder containing images
+// create file.dzi and folder containing images (inside .zip)
+// sau đó unzip và remove .zip
 var admZip = require("adm-zip");
-const getDzi = async (req, res, filename) => {
-  sharp("imgs/" + filename)
+const getDzi = async (req, res, filename, tempPath) => {
+  sharp(tempPath)
     .png()
     .tile({
       size: 256,
       overlap: 2,
       layout: "dz",
     })
-    .toFile("imgs/" + filename + ".zip")
+    .toFile("imgs/" + filename.split(".")[0] + ".zip")
     .then((info) => {
-      console.log(info);
-      unzip(filename);
-      res.status(200).contentType("text/plain").end("File uploaded!");
+      try {
+        console.log(info);
+        console.log(req.body);
+        const img = new Image({
+          name: req.body.name,
+          albumId: req.body.albumId,
+          createBy: req.body.createBy,
+          filename: filename,
+          width: info.width,
+          height: info.height,
+          sharedTo: JSON.parse(req.body.sharedTo),
+        });
+        img.save();
+
+        const endPath = path.join(__dirname, `../../imgs/`);
+        unzip(filename.split(".")[0], endPath);
+        fs.rename(
+          tempPath,
+          endPath + filename.split(".")[0] + "\\" + filename,
+          (err) => console.log(err)
+        );
+        res.status(200).contentType("text/plain").end("File uploaded!");
+      } catch (error) {
+        console.log(error);
+      }
     })
     .catch((e) => res.status(500).send(e.message));
 };
 
-const unzip = (filename) => {
-  var zip = new admZip("imgs/" + filename + ".zip");
-  const endPath = path.join(__dirname, `../../imgs/`);
-  zip.extractAllTo(endPath, true);
-  fs.unlinkSync(path.join(__dirname, `../../imgs/` + filename + ".zip"));
+const unzip = (filename, endPath) => {
+  try {
+    var zip = new admZip("imgs/" + filename + ".zip");
+    zip.extractAllTo(endPath, true);
+    fs.unlinkSync(path.join(__dirname, `../../imgs/` + filename + ".zip"));
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const getFolderDzi = async (req, res) => {
   res.sendFile(req.params.name, {
-    root: "./imgs/hill-XKPAQ1/hill_files/" + req.params.number,
+    root:
+      "./imgs/" +
+      req.params.file +
+      "/" +
+      req.params.file +
+      "_files/" +
+      req.params.number,
   });
 };
 

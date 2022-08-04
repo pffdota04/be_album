@@ -1,10 +1,12 @@
 const express = require("express");
 const app = express();
+const cookieParser = require("cookie-parser");
 app.listen(5000, () => console.log("Server is running"));
 app.use(express.json());
 // ADD THIS
 var cors = require("cors");
 app.use(cors());
+app.use(cookieParser());
 
 const mongoose = require("mongoose");
 mongoose.connect(
