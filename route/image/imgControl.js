@@ -1,5 +1,7 @@
 const Image = require("./../../models/Images/Image");
 const fs = require("fs");
+const fsExtra = require("fs-extra");
+
 const path = require("path");
 //upload image
 const handleError = (err, res) => {
@@ -8,12 +10,10 @@ const handleError = (err, res) => {
 
 const uploadAnImage = async (req, res) => {
   const random = Math.random().toString(36).slice(2);
+  const filename = random + "-" + req.file.originalname;
   const tempPath = req.file.path;
 
-  const targetPath = path.join(
-    __dirname,
-    "./../../imgs/" + random + "-" + req.file.originalname
-  );
+  const targetPath = path.join(__dirname, "./../../imgs/" + filename);
   fs.rename(tempPath, targetPath, (err) => {
     console.log(err);
     if (err) return handleError(err, res);
@@ -21,15 +21,15 @@ const uploadAnImage = async (req, res) => {
       name: req.body.name,
       albumId: req.body.albumId,
       createBy: req.body.createBy,
-      filename: random + "-" + req.file.originalname,
+      filename: filename,
       sharedTo: JSON.parse(req.body.sharedTo),
     });
     img.save();
-    res.status(200).contentType("text/plain").end("File uploaded!");
+    getDzi(req, res, filename);
   });
 };
 
-// GET IMG
+// GET IMG CUSTOM SIZE
 const sharp = require("sharp");
 function resize(path, format, width, height) {
   const readStream = fs.createReadStream(path);
@@ -60,6 +60,28 @@ const getAnImage = (req, res) => {
   res.sendFile(req.query.file, { root: "./imgs" });
 };
 
+const getAnImageInfo = async (req, res) => {
+  try {
+    const id = req.query.id;
+    console.log(id);
+    const img = await Image.findById(id);
+    console.log(img);
+    res.send({
+      _id: img._id,
+      name: img.name,
+      albumId: img.albumId,
+      createBy: img.createBy,
+      countShare: img.sharedTo.length,
+      uploadDay: img.uploadDay,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(404).send({
+      message: error.message,
+    });
+  }
+};
+
 const getImagesByAlbumId = async (req, res) => {
   const id = req.params.id;
   console.log(id);
@@ -68,22 +90,29 @@ const getImagesByAlbumId = async (req, res) => {
 };
 
 // create file.dzi and folder containing images
-const getDzi = async (req, res) => {
-  sharp("hill.jpg")
+var admZip = require("adm-zip");
+const getDzi = async (req, res, filename) => {
+  sharp("imgs/" + filename)
     .png()
     .tile({
       size: 256,
       overlap: 2,
       layout: "dz",
     })
-    // .toFile("imgs/hill.dz", function (err, info) {
-    //   console.log(info);
-    //   console.log(err);
-    // });
-    .toFile("imgs/hill.dz")
-    .then((info) => console.log(info))
-    .catch((e) => console.log(e));
-  res.send("xxx");
+    .toFile("imgs/" + filename + ".zip")
+    .then((info) => {
+      console.log(info);
+      unzip(filename);
+      res.status(200).contentType("text/plain").end("File uploaded!");
+    })
+    .catch((e) => res.status(500).send(e.message));
+};
+
+const unzip = (filename) => {
+  var zip = new admZip("imgs/" + filename + ".zip");
+  const endPath = path.join(__dirname, `../../imgs/`);
+  zip.extractAllTo(endPath, true);
+  fs.unlinkSync(path.join(__dirname, `../../imgs/` + filename + ".zip"));
 };
 
 const getFolderDzi = async (req, res) => {
@@ -99,4 +128,5 @@ module.exports = {
   getImagesByAlbumId,
   getDzi,
   getFolderDzi,
+  getAnImageInfo,
 };

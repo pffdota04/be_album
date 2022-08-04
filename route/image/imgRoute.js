@@ -7,6 +7,7 @@ const {
   getImagesByAlbumId,
   getDzi,
   getFolderDzi,
+  getAnImageInfo,
 } = require("./imgControl");
 
 const imageRoutes = express.Router();
@@ -19,8 +20,9 @@ const upload = multer({
 });
 //
 imageRoutes.route("/upload").post(upload.single("imgs"), uploadAnImage);
-imageRoutes.route("/getcustom").get(getAnCustomImage);
-imageRoutes.route("/").get(getAnImage);
+imageRoutes.route("/getcustom").get(getAnCustomImage); // custom size
+imageRoutes.route("/").get(getAnImage); // get file img
+imageRoutes.route("/info").get(getAnImageInfo); // get info's img
 imageRoutes.route("/albumid/:id").get(getImagesByAlbumId);
 imageRoutes.route("/getdzi").get(getDzi);
 imageRoutes.route("/getFolderDzi/:number/:name").get(getFolderDzi);
