@@ -1,12 +1,15 @@
 const express = require("express");
+const morgan = require("morgan");
 const app = express();
 const cookieParser = require("cookie-parser");
 app.listen(5000, () => console.log("Server is running"));
-app.use(express.json());
 // ADD THIS
 var cors = require("cors");
-app.use(cors());
+// app.use(cors());
+app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
 app.use(cookieParser());
+app.use(express.json());
+app.use(morgan("dev"));
 
 const mongoose = require("mongoose");
 mongoose.connect(
@@ -20,6 +23,7 @@ mongoose.connect(
 const userRoutes = require("./route/user/userRoute");
 const imageRoutes = require("./route/image/imgRoute");
 const alBumRoutes = require("./route/album/albumRoute");
+
 app.use("/user", userRoutes);
 app.use("/image", imageRoutes);
 app.use("/album", alBumRoutes);

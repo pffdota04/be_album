@@ -3,7 +3,10 @@ const User = require("../models/Users/User");
 
 const checkToken = async (req, res, next) => {
   try {
-    const token = req.headers.authorization;
+    const token = req.cookies?.token;
+    console.log(token);
+    console.log("token");
+    // const token = req.headers.authorization;
     if (!token) throw new Error("Wrong token");
     const decodedToken = jwt.verify(token, "lolwtf420and69");
     // const timeout = decodedToken.exp - Math.floor(Date.now() / 1000);

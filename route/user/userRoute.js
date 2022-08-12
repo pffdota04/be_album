@@ -8,14 +8,18 @@ const {
   removeAllUser,
   postVerify2FA,
   getUserByToken,
+  logout,
   getUserByEmail,
+  listUserById,
 } = require("./userControl");
 
 const userRoute = express.Router();
 
 userRoute.route("/").get(getAllUser).post(createUser);
+userRoute.route("/logout").get(logout);
 userRoute.route("/byid/:id").get(getUserByEmail);
 userRoute.route("/login").post(login);
+userRoute.route("/listbyid").post(listUserById);
 userRoute.route("/createqrcode").post(postEnable2FA);
 userRoute.route("/checkcode").post(postVerify2FA);
 userRoute.route("/getUserByToken").get(checkToken, getUserByToken);

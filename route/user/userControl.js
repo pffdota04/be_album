@@ -3,6 +3,7 @@ const qrcode = require("qrcode");
 const bcrypt = require("bcrypt");
 const otplib = require("otplib");
 var jwt = require("jsonwebtoken");
+const { default: mongoose } = require("mongoose");
 const generateQRCode = async (otpAuth) => {
   try {
     const QRCodeImageUrl = await qrcode.toDataURL(otpAuth);
@@ -17,16 +18,13 @@ const { authenticator } = otplib;
 const generateUniqueSecret = () => {
   return authenticator.generateSecret();
 };
-/** Tạo mã OTP token */
+/** Tạo mã OTP  */
 const generateOTPToken = (username, serviceName, secret) => {
   return authenticator.keyuri(username, serviceName, secret);
 };
-/** Kiểm tra mã OTP token có hợp lệ hay không
- * Có 2 method "verify" hoặc "check", các bạn có thể thử dùng một trong 2 tùy thích.
- */
+
 const verifyOTPToken = (token, secret) => {
   return authenticator.verify({ token, secret });
-  // return authenticator.check(token, secret)
 };
 
 // sinh tokenLogin, end login
@@ -38,7 +36,6 @@ const postVerify2FA = async (req, res) => {
     console.log("otpToken: " + otpToken);
     // Kiểm tra mã token người dùng truyền lên có hợp lệ hay không?
     const isValid = verifyOTPToken(otpToken, user.secret);
-    console.log(user);
     const token = jwt.sign(
       {
         _id: user._id,
@@ -46,26 +43,36 @@ const postVerify2FA = async (req, res) => {
         email: user.email,
       },
       "lolwtf420and69",
-      { expiresIn: "2h" }
+      { expiresIn: "10h" }
     );
     if (isValid) {
       user.scaned = true;
       user.save();
+      res.cookie("token", token, {
+        maxAge: 1000 * 60 * 60 * 2,
+        httpOnly: true,
+      });
+
+      res.cookie("isLogin", true, {
+        maxAge: 1000 * 60 * 60 * 2,
+      });
+
       return res.status(200).json({
         _id: user._id,
         email: user.email,
         name: user.name,
         sharedAlbums: user.sharedAlbums,
         sharedImages: user.sharedImages,
-        token: token,
+        check: true,
+        // token: token,
       });
-    } else return res.status(200).json({ isValid });
+    } else return res.status(200).json({ check: false });
   } catch (error) {
     return res.status(500).json(error);
   }
 };
 
-/* controller xử lý tạo mã otp và gửi về client dạng hình ảnh QR Code */
+/* controller xử lý tạo mã otp và gửi về client ảnh QR Code */
 const postEnable2FA = async (req, res) => {
   try {
     let { email } = req.body;
@@ -110,6 +117,7 @@ const createUser = async (req, res) => {
   }
 };
 
+// just check password and email (not real login)
 const login = async (req, res) => {
   const body = req.body;
   const user = await User.findOne({ email: body.email });
@@ -149,7 +157,7 @@ const getUserByToken = async (req, res) => {
     address: user.address,
     sharedAlbum: user.sharedAlbums,
     sharedImages: user.sharedImages,
-    token: req.user.token,
+    // token: req.user.token,
   });
 };
 
@@ -162,6 +170,38 @@ const getUserByEmail = async (req, res) => {
   });
 };
 
+const logout = () => {
+  res.clearCookie("token");
+
+  res.cookie("isLogin", false);
+
+  res.send("logout!");
+};
+
+const listUserById = async (req, res) => {
+  const records = await listUser(req.body.list);
+  // const records = await User.find({ _id: { $in: listid } });
+  res.send(records);
+};
+
+const removeImageSharedInUser = async (uid, imgid) => {
+  const user = await oneUser(uid);
+  return user;
+};
+
+//
+const listUser = async (listid) => {
+  return await User.find({ _id: { $in: listid } });
+};
+
+const oneUser = async (id) => {
+  return await User.findById(id);
+};
+
+const oneUserByMail = async (email) => {
+  return await User.findOne({ email: email });
+};
+
 module.exports = {
   getAllUser,
   createUser,
@@ -171,4 +211,9 @@ module.exports = {
   postVerify2FA,
   getUserByToken,
   getUserByEmail,
+  logout,
+  listUserById,
+  removeImageSharedInUser,
+  oneUser,
+  oneUserByMail,
 };
