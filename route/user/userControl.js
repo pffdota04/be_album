@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const otplib = require("otplib");
 var jwt = require("jsonwebtoken");
 const { default: mongoose } = require("mongoose");
+const { findById } = require("./../../models/Users/User");
 const generateQRCode = async (otpAuth) => {
   try {
     const QRCodeImageUrl = await qrcode.toDataURL(otpAuth);
@@ -30,10 +31,12 @@ const verifyOTPToken = (token, secret) => {
 // sinh tokenLogin, end login
 const postVerify2FA = async (req, res) => {
   try {
-    const { otpToken, email } = req.body;
-    const user = await User.findOne({ email: email });
-    console.log("secret: " + user.secret);
+    const { otpToken } = req.body;
+    const user = req.user;
+    // const { otpToken, email } = req.body;
+    // const user = await User.findOne({ email: email });
     console.log("otpToken: " + otpToken);
+    console.log("user: " + user);
     // Kiểm tra mã token người dùng truyền lên có hợp lệ hay không?
     const isValid = verifyOTPToken(otpToken, user.secret);
     const token = jwt.sign(
@@ -49,12 +52,12 @@ const postVerify2FA = async (req, res) => {
       user.scaned = true;
       user.save();
       res.cookie("token", token, {
-        maxAge: 1000 * 60 * 60 * 2,
+        maxAge: 1000 * 60 * 60 * 10,
         httpOnly: true,
       });
 
       res.cookie("isLogin", true, {
-        maxAge: 1000 * 60 * 60 * 2,
+        maxAge: 1000 * 60 * 60 * 10,
       });
 
       return res.status(200).json({
@@ -68,7 +71,8 @@ const postVerify2FA = async (req, res) => {
       });
     } else return res.status(200).json({ check: false });
   } catch (error) {
-    return res.status(500).json(error);
+    console.log(error);
+    return res.status(200).json(error);
   }
 };
 
@@ -76,8 +80,7 @@ const postVerify2FA = async (req, res) => {
 const postEnable2FA = async (req, res) => {
   try {
     let { email } = req.body;
-    // đây là tên ứng dụng của các bạn, nó sẽ được hiển thị trên app Google Authenticator hoặc Authy sau khi bạn quét mã QR
-    const serviceName = "kietttt";
+    const serviceName = "K-Album"; // teen app
     // Thực hiện tạo mã OTP
     const user = await User.findOne({ email: email });
     console.log(user);
@@ -87,6 +90,19 @@ const postEnable2FA = async (req, res) => {
     return res.status(200).json({ QRCodeImage });
   } catch (error) {
     return res.status(500).json(error);
+  }
+};
+
+const createQrAfterSignUp = async (user) => {
+  try {
+    const serviceName = "K-Album"; // teen app
+
+    const otpAuth = generateOTPToken(user.email, serviceName, user.secret);
+    // Tạo ảnh QR Code để gửi về client
+    const QRCodeImage = await generateQRCode(otpAuth);
+    return QRCodeImage;
+  } catch (error) {
+    return false;
   }
 };
 
@@ -106,11 +122,13 @@ const createUser = async (req, res) => {
     user
       .save()
       .then((w) => {
-        res.send({ email: user.email });
+        createQrAfterSignUp(user).then((qr) => {
+          return res.status(200).json({ qr });
+        });
       })
       .catch((e) => {
         console.log(e);
-        res.status(500).send({
+        res.status(200).send({
           message: "Something was wrong!",
         });
       });
@@ -118,17 +136,14 @@ const createUser = async (req, res) => {
 };
 
 // just check password and email (not real login)
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   const body = req.body;
   const user = await User.findOne({ email: body.email });
   if (user) {
     const validPassword = await bcrypt.compare(body.password, user.password);
     if (validPassword) {
-      const copy = {
-        email: user.email,
-        scaned: user.scaned,
-      };
-      res.send(copy);
+      req.user = user;
+      next();
     } else {
       res.status(401).json({ error: "Wrong password" });
     }
@@ -137,11 +152,12 @@ const login = async (req, res) => {
   }
 };
 
-const getAllUser = async (req, res) => {
-  const user = await User.find();
+const getMyAccount = async (req, res) => {
+  let user = { ...(await User.findById(req.user._id))._doc };
+  delete user.secret;
+  delete user.password;
+  console.log(user);
   res.send(user);
-  const salt = await bcrypt.genSalt(10);
-  console.log(salt);
 };
 
 const removeAllUser = async (req, res) => {
@@ -150,7 +166,7 @@ const removeAllUser = async (req, res) => {
 };
 
 const getUserByToken = async (req, res) => {
-  const user = await User.findOne({ _id: req.user._id });
+  const user = await User.findById(req.user._id);
   res.send({
     _id: user._id,
     name: user.name,
@@ -161,8 +177,8 @@ const getUserByToken = async (req, res) => {
   });
 };
 
-const getUserByEmail = async (req, res) => {
-  const user = await User.findOne({ _id: req.params.id });
+const getUserById = async (req, res) => {
+  const user = await User.findById(req.params.id);
   res.send({
     name: user.name,
     address: user.address,
@@ -170,11 +186,32 @@ const getUserByEmail = async (req, res) => {
   });
 };
 
-const logout = () => {
+const editUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const { name, address, password } = req.body;
+    if (password == "") {
+      user.name = name;
+      user.address = address;
+      user.save();
+      res.send("ok");
+    } else {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+      user.name = name;
+      user.address = address;
+      user.save();
+      res.send("ok");
+    }
+  } catch (error) {
+    console.log(error);
+    res.send("error");
+  }
+};
+
+const logout = (req, res) => {
   res.clearCookie("token");
-
   res.cookie("isLogin", false);
-
   res.send("logout!");
 };
 
@@ -203,17 +240,18 @@ const oneUserByMail = async (email) => {
 };
 
 module.exports = {
-  getAllUser,
+  getMyAccount,
   createUser,
   login,
   postEnable2FA,
   removeAllUser,
   postVerify2FA,
   getUserByToken,
-  getUserByEmail,
+  getUserById,
   logout,
   listUserById,
   removeImageSharedInUser,
   oneUser,
   oneUserByMail,
+  editUser,
 };

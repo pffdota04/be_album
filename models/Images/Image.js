@@ -17,10 +17,16 @@ const imageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  sharedTo: {
-    type: Array,
-    default: [],
-  },
+  sharedTo: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+    },
+  ],
+  // sharedTo: {
+  //   type: Array,
+  //   default: [],
+  // },
 });
 
 module.exports = mongoose.model("Image", imageSchema);

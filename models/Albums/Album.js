@@ -7,14 +7,20 @@ const albumSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  lastUpdate: {
+    type: Date,
+    default: Date.now,
+  },
   totalImage: {
     type: Number,
     default: 0,
   },
-  sharedTo: {
-    type: Array,
-    default: [],
-  },
+  sharedTo: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+    },
+  ],
 });
 
 module.exports = mongoose.model("Album", albumSchema);
