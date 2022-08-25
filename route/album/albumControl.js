@@ -3,13 +3,13 @@ const Album = require("./../../models/Albums/Album");
 
 // const { getImagesByAlbumId, deleteAnImage } = require("./../image/imgControl");
 
-const postAnAlbum = (req, res) => {
+const postAnAlbum = async (req, res) => {
   try {
     const alb = new Album({
       uid: req.user._id,
       name: req.body.name,
     });
-    alb.save();
+    await alb.save();
     res.send("Created");
   } catch (error) {
     res.status(500);
@@ -150,12 +150,12 @@ const shareAlbum = async (req, res) => {
       if (!user) throw new Error("User target not found");
       if (!user.sharedAlbums.includes(_id)) {
         user.sharedAlbums.push(_id);
-        user.save();
+        await user.save();
       }
 
       if (!album.sharedTo.includes(user._id)) {
         album.sharedTo.push(user._id);
-        album.save();
+        await album.save();
       }
 
       res.send("ok");
@@ -171,7 +171,6 @@ const sharedToMeAlbum = async (req, res) => {
   try {
     const user = await oneUserByMail(req.user.email);
     console.log(user);
-    console.log("22222222222 &&&&&& ?????????");
     if (user.sharedAlbums.length == 0) res.send([]);
     else {
       const listalb = await Album.find({ _id: { $in: user.sharedAlbums } });

@@ -41,7 +41,10 @@ imageRoutes.route("/albumid/:id").get(checkToken, imageInAlbum);
 imageRoutes.route("/share").post(checkToken, shareAnImage);
 imageRoutes.route("/unshare").post(checkToken, unShareAnImage);
 imageRoutes.route("/getFolderDzi/:file/:number/:name").get(getFolderDzi);
-imageRoutes.route("/check").get(checkToken, test);
+imageRoutes
+  .route("/check")
+  // .get(checkToken, test)
+  .post(checkToken, test);
 imageRoutes.route("/myimage").get(checkToken, myImage);
 imageRoutes.route("/sharedtome").get(checkToken, sharedToMeImage);
 // imageRoutes.route("/getdzi").get(getDzi);

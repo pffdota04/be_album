@@ -44,21 +44,33 @@ const postVerify2FA = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        refreshed: false,
       },
       "lolwtf420and69",
-      { expiresIn: "10h" }
+      { expiresIn: "20h" }
     );
+
+    const token2 = jwt.sign(
+      {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+      "wtfman",
+      { expiresIn: "1d" }
+    );
+
     if (isValid) {
       user.scaned = true;
       user.save();
+      res.cookie("tokenrf", token2, {
+        httpOnly: true,
+      });
       res.cookie("token", token, {
-        maxAge: 1000 * 60 * 60 * 10,
         httpOnly: true,
       });
 
-      res.cookie("isLogin", true, {
-        maxAge: 1000 * 60 * 60 * 10,
-      });
+      res.cookie("isLogin", true, {});
 
       return res.status(200).json({
         _id: user._id,

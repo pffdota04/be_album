@@ -32,4 +32,21 @@ userRoute.route("/getUserByToken").get(checkToken, getUserByToken);
 // warnign!!!
 userRoute.route("/rmall").get(removeAllUser);
 
+// const multer = require("multer");
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, "Images");
+//   },
+//   filename: (req, file, cb) => {
+//     req.filename = "avc";
+//     cb(null, Date.now() + file.originalname);
+//   },
+// });
+// const upload = multer({ storage: storage });
+
+// userRoute.post("/cc", upload.array("DocumentFile", 10), (req, res) => {
+//   req.files.map((e) => console.log(e.filename));
+// });
+
+
 module.exports = userRoute;

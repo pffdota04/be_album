@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 
 const imageSchema = new mongoose.Schema({
   name: String,
-  // filename: String, //unique
   albumId: String,
   createBy: String,
   width: {
@@ -23,10 +22,10 @@ const imageSchema = new mongoose.Schema({
       ref: "users",
     },
   ],
-  // sharedTo: {
-  //   type: Array,
-  //   default: [],
-  // },
+  status: {
+    type: String,
+    default: "init",
+  },
 });
 
 module.exports = mongoose.model("Image", imageSchema);

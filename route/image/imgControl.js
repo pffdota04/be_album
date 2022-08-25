@@ -8,7 +8,6 @@ const {
   isOwnerAlbum,
   getAlbumById,
 } = require("../album/albumControl");
-global.globalString = {};
 
 const path = require("path");
 
@@ -96,6 +95,7 @@ const getAnImageInfo = async (req, res) => {
 
 const imageInAlbum = async (req, res) => {
   const id = req.params.id;
+
   // const album = await findAlbumById(id);
   // if(isOwnerImage())
   const imgs = await getImagesByAlbumId(id);
@@ -103,7 +103,7 @@ const imageInAlbum = async (req, res) => {
 };
 
 const getImagesByAlbumId = async (id) => {
-  return await Image.find({ albumId: id });
+  return await Image.find({ albumId: id }).sort({ _id: 1 });
 };
 
 //upload image
@@ -115,7 +115,6 @@ const uploadAnImage = async (req, res) => {
       albumId: req.body.albumId,
       createBy: req.user._id,
     });
-    console.log(img._id);
 
     let exten = req.file.originalname.split(".");
     const filename = img._id + "." + exten[exten.length - 1];
@@ -195,55 +194,74 @@ const unzip = (filename, endPath, callback) => {
   });
 };
 
-const test = async (req, res) => {
-  const arr = globalString[req.query.key];
-  if (arr) {
-    res.send(arr);
-    if (arr === true)
-      // neu la true => xoa => end
-      delete globalString[req.query.key];
-    if (arr[arr.length - 1] !== 0)
-      // da xu ly xong => true
-      globalString[req.query.key] = true;
-  } else res.send(false);
-};
+global.globalString = {};
+// ex
+// {
+//   aocjec: [true, true, false, true, 0, 0 ,0],
+//   vosjgo: [true, true, 0 ,0],
+// }
 
-//upload multiple
 const uploadMultiple = async (req, res) => {
   try {
     const album = await findAlbumById(req.body.albumId); //check album exist
     if (album) {
       if (isOwnerAlbum(album, req.user._id)) {
-        const uploadKey = (Math.random() + 1).toString(36).substring(2);
-        globalString[uploadKey] = new Array(req.files.length).fill(0);
-
         const name = JSON.parse(req.body.name);
-        // [0,0,0,0,0,0,0,0]
-        res.send({ key: uploadKey, status: true });
-        let result = new Array(req.files.length);
-        // let result = [];
+        let listImgs = [];
+
         for (let i = 0; i < req.files.length; i++) {
-          const img = new Image({
+          const img = await new Image({
             name: name[i],
             albumId: req.body.albumId,
             createBy: req.user._id,
+            status: "init",
           });
-          let exten = req.files[i].originalname.split(".");
-          const filename = img._id + "." + exten[exten.length - 1];
-          const tempPath = req.files[i].path;
 
-          const a = await handleUpload(filename, tempPath, img);
-          if (a) album.totalImage = album.totalImage + 1;
-          globalString[uploadKey][i] = a;
-          result[i] = a;
+          listImgs.push(img);
+          const tempPath = req.files[i].path; // now img
+          fs.rename(tempPath, "imgs/" + img._id + ".png", (err, info) => {
+            console.log(err);
+            console.log(info);
+          });
+
+          await img.save();
+          // let exten = req.files[i].originalname.split(".");
+          // const filename = img._id + "." + exten[exten.length - 1]; // file taget
+          // const tempPath = req.files[i].path; // now img
+          // fs.rename(tempPath, "imgs/" + filename.split(".")[0] + png);
+          // const a = await handleUpload(filename, tempPath, img);
+          // if (a) album.totalImage = album.totalImage + 1;
+          // globalString[uploadKey][i] = a;
+          // result[i] = a;
         }
+        album.totalImage = album.totalImage + listImgs.length;
         album.lastUpdate = new Date();
         album.save();
+        res.send(listImgs);
       } else res.send({ message: "You are not the owner", status: false });
     } else res.send({ message: "Album not exist", status: false });
   } catch (error) {
     console.log(error);
   }
+};
+
+// check progress
+const test = async (req, res) => {
+  const list = req.body.list;
+  const listimg = await Image.find({ _id: { $in: list } });
+  // console.log(listimg);
+  let allDone = 0;
+  listimg.map((e) => {
+    if (e.status !== "init") allDone++;
+  });
+  if (allDone === listimg.length) res.send({ complete: true, list: listimg });
+  else res.send({ complete: false, list: listimg });
+  // const arr = globalString[req.query.key];
+  // if (arr) {
+  //   res.send(arr);
+  //   if (arr === true) delete globalString[req.query.key]; // neu la true => xoa => end
+  //   if (arr[arr.length - 1] !== 0) globalString[req.query.key] = true; // da xu ly xong => true
+  // } else res.send(false);
 };
 
 const getFolderDzi = async (req, res) => {
@@ -257,10 +275,8 @@ const getFolderDzi = async (req, res) => {
 const deleteImage = async (req, res) => {
   try {
     const imgs = await Image.findById(req.query._id);
-    console.log(imgs);
     if (!imgs) throw new Error("Image not found");
     if (isOwnerImage(imgs, req.user._id)) {
-      console.log("removing... " + imgs._id);
       // imgs.remove();
       deleteAnImage(imgs._id);
       const album = await findAlbumById(imgs.albumId); //check album exist
@@ -334,13 +350,10 @@ const unShareAnImage = async (req, res) => {
         user.sharedImages.splice(index, 1);
         user.save();
       }
-      console.log(imgs.sharedTo);
       // Image (push to imgs.sharedTo)'
       const index2 = imgs.sharedTo.indexOf(user._id);
-      console.log(index2);
       if (index2 > -1) {
         imgs.sharedTo.splice(index, 1);
-        console.log(imgs.sharedTo);
         imgs.save();
       }
 
@@ -355,8 +368,6 @@ const unShareAnImage = async (req, res) => {
 
 const renameImage = async (req, res) => {
   const { _id, to } = req.query;
-  console.log(_id);
-  console.log(to);
   const img = await Image.findById(_id);
   if (img && isOwnerImage(img, req.user._id)) {
     img.name = to;
@@ -368,13 +379,9 @@ const renameImage = async (req, res) => {
 const sharedToMeImage = async (req, res) => {
   try {
     const user = await oneUserByMail(req.user.email);
-    // console.log
     if (user.sharedImages.length == 0) res.send([]);
     else {
-      // console.log(user.sharedImages);
-      // console.log(JSON.stringify(user.sharedImages));
       const listimg = await Image.find({ _id: { $in: user.sharedImages } });
-      console.log("ok hehe");
       res.send(listimg);
     }
   } catch (error) {
@@ -383,11 +390,9 @@ const sharedToMeImage = async (req, res) => {
 };
 
 const myImage = async (req, res) => {
-  console.log(req.user._id);
   let startAt = req.query.startAt;
   if (!startAt) startAt = 0;
   startAt = parseInt(startAt);
-  console.log(startAt);
   const listimg = await Image.find({ createBy: req.user._id })
     .skip(startAt)
     .limit(5)
@@ -397,6 +402,8 @@ const myImage = async (req, res) => {
   // const listimg = await Image.find({ createBy: req.user._id });
   // res.send(listimg);
 };
+
+// other funciotn
 
 const isOwnerImage = (img, uid) => {
   return uid === img.createBy;
