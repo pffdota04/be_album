@@ -26,6 +26,7 @@ const imageSchema = new mongoose.Schema({
     type: String,
     default: "init",
   },
+  worker: Number,
 });
 
 module.exports = mongoose.model("Image", imageSchema);

@@ -5,6 +5,7 @@ const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
 
+let count = 0;
 mongoConntect();
 let a = 1000;
 let nowProgress = [];
@@ -14,11 +15,16 @@ async function run() {
     const uploadWatch = Image.watch();
     uploadWatch.on("change", (change) => {
       if (change.operationType + "" === "insert") {
-        console.log("START: " + change.fullDocument.name);
-        nowProgress.push(change.fullDocument._id);
-        setTimeout(() => handleUpload(change.fullDocument._id + ""), [0]);
-        a = a + 2000;
-        if (a > 15000) a = 1000;
+        if (change.fullDocument.worker === 1) {
+          count++;
+          console.log(
+            count + ": Worker 1 --START: " + change.fullDocument.name
+          );
+          nowProgress.push(change.fullDocument._id);
+          setTimeout(() => handleUpload(change.fullDocument._id + ""), [0]);
+          a = a + 2000;
+          if (a > 15000) a = 1000;
+        }
       }
     });
   } finally {
@@ -66,10 +72,10 @@ const handleUpload = async (id) => {
     }
 
     var endTime = performance.now();
-    console.log(`=>>> ${endTime - startTime} milliseconds for ` + img._id);
+    console.log(`Worker 1 COMPLETE:  ${endTime + " vs " + startTime} ms for ` + img.name);
     return true;
   } catch (error) {
-    console.log(error);
+    console.log(`Worker 1 ERROR: ` + img.name);
     img.status = "error";
     img.save();
     fs.unlinkSync("imgs/" + id + ".png");

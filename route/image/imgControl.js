@@ -194,12 +194,12 @@ const unzip = (filename, endPath, callback) => {
   });
 };
 
-global.globalString = {};
 // ex
 // {
 //   aocjec: [true, true, false, true, 0, 0 ,0],
 //   vosjgo: [true, true, 0 ,0],
 // }
+global.worker = 1;
 
 const uploadMultiple = async (req, res) => {
   try {
@@ -215,7 +215,11 @@ const uploadMultiple = async (req, res) => {
             albumId: req.body.albumId,
             createBy: req.user._id,
             status: "init",
+            worker: global.worker,
           });
+          global.worker = global.worker + 1;
+          if (global.worker > 3) global.worker = 1;
+          // 123
 
           listImgs.push(img);
           const tempPath = req.files[i].path; // now img
@@ -225,6 +229,7 @@ const uploadMultiple = async (req, res) => {
           });
 
           await img.save();
+
           // let exten = req.files[i].originalname.split(".");
           // const filename = img._id + "." + exten[exten.length - 1]; // file taget
           // const tempPath = req.files[i].path; // now img

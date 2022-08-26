@@ -1,0 +1,20 @@
+{
+  "apps": [
+    {
+      "name": "API",
+      "script": "index.js"
+    },
+    {
+      "name": "UPLOAD 1",
+      "script": "worker1.js"
+    },
+    {
+      "name": "UPLOAD 2",
+      "script": "worker2.js"
+    },
+    {
+      "name": "UPLOAD 3",
+      "script": "worker3.js"
+    }
+  ]
+}

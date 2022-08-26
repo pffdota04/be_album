@@ -2,7 +2,7 @@ const express = require("express");
 const morgan = require("morgan");
 const app = express();
 const cookieParser = require("cookie-parser");
-app.listen(5001, () => console.log("Server is running"));
+app.listen(5000, () => console.log("Server is running"));
 // ADD THIS
 var cors = require("cors");
 // app.use(cors());
