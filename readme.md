@@ -1,4 +1,13 @@
 # BACKEND
+
+### DOCKER:
+-> cd to repo
+```
+docker build -t mybe .
+
+docker run -it --name "name-container" -p 5000:5000 mybe
+```
+
 ### Bao gồm 1 server API và 3 node xử lý ảnh 
 Yêu cầu đã cài đặt **pm2** trước đó:
 ```
