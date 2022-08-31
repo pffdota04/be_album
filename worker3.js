@@ -72,7 +72,7 @@ const handleUpload = async (id) => {
     }
     var endTime = performance.now();
     console.log(
-      `Worker 3 COMPLETE: ${endTime + " vs " + startTime} ms for ` + img.name
+      `Worker 3 COMPLETE: ${endTime - startTime} ms for ` + img.name
     );
     return true;
   } catch (error) {
